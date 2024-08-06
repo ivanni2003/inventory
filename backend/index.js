@@ -1,55 +1,46 @@
 const express = require('express')
 const app = express()
+const mongoose = require('mongoose')
 
 app.use(express.json())
 
-let products = [
-    {
-      id: "1",
-      name: "Mouse",
-      price: 10,
-      quantity: 10
-    },
-    {
-        id: "2",
-        name: "Keyboard",
-        price: 20,
-        quantity: 10
-    },
-    {
-        id: "3",
-        name: "Monitor",
-        price: 50,
-        quantity: 10
-    }
-    
-  ]
-app.get('/', (request, response) => {
-  response.send('<h1>Hello World!</h1>')
+const url = 'mongodb+srv://ivanni2003:Luckace34-@inventorycluster.5cwsxk5.mongodb.net/inventoryApp?retryWrites=true&w=majority&appName=inventoryCluster'
+
+mongoose.set('strictQuery',false)
+mongoose.connect(url)
+
+const productSchema = new mongoose.Schema({
+    name: String,
+    price: Number,
+    quantity: Number
 })
+
+productSchema.set('toJSON', {
+    transform: (document, returnedObject) => {
+        returnedObject.id = returnedObject._id.toString()
+        delete returnedObject._id
+        delete returnedObject.__v
+      }
+})
+
+const Product = mongoose.model('Product', productSchema)
 
 app.get('/api/products', (request, response) => {  // retrieve
-  response.json(products)
+  Product.find({}).then(products => {
+    response.json(products)
+  })
 })
+
 
 app.get('/api/products/:id', (request, response) => {   // retrieve
-    const id = request.params.id
-    const product = products.find(product => product.id === id)
-    response.json(product)
-
-    if (product) {
-        response.json(product)
-    }
-    else {
-        response.status(404).end()
-    }
-})
-
-app.delete('/api/products/:id', (request, response) => {  // delete
-    const id = request.params.id
-    products = products.filter(product => product.id !== id)
-  
-    response.status(204).end()
+    Product.findById(request.params.id).then(product => {
+        if (product) {
+            response.json(product)
+        }
+        else {
+            response.status(404).end()
+        }
+    })
 })
 
 app.post('/api/products', (request, response) => {   // create
@@ -61,36 +52,37 @@ app.post('/api/products', (request, response) => {   // create
         })
     }
 
+    const product = new Product({
+        name: body.name,
+        price: body.price,
+        quantity: body.quantity
+    })
+        
+    product.save().then(savedProduct => {
+        response.json(savedProduct)
+    })
+})
+
+app.delete('/api/products/:id', (request, response) => {  // delete
+    Product.findByIdAndDelete(request.params.id)
+        .then(result => {
+            response.status(204).end()
+        })
+})
+
+app.put('/api/products/:id', (request, response) => {  // update
+    const body = request.body
+
     const product = {
-        id: String(products.length + 1),
         name: body.name,
         price: body.price,
         quantity: body.quantity
     }
 
-    products = products.concat(product)
-    response.json(product)
-})
-
-app.put('/api/products/:id', (request, response) => {  // update
-    const id = request.params.id
-    const updatedProduct = {
-        id: "1",
-        name: "hello",
-        price: 100,
-        quantity: 20
-    };
-
-    const productIndex = products.findIndex(product => product.id === id)
-
-    if (productIndex === -1) {
-        return response.status(404).json({
-            error: 'product not found'
+    Product.findByIdAndUpdate(request.params.id, product, {new: true})
+        .then(updatedProduct => {
+            response.json(updatedProduct)
         })
-    }
-  
-    products[productIndex] = { ...products[productIndex], ...updatedProduct }
-    response.json(products[productIndex])
 })
 
 const PORT = 3001
