@@ -1,0 +1,10 @@
+POST http://localhost:3001/api/products
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IlRpZW4iLCJpZCI6IjY2YjU4ZmQxNWVhOWQ0ZTk5OGZkYTBkMyIsImlhdCI6MTcyMzI1NjQzM30.sq48XC-q3LBjhdXeYmzlE74CpZA_Se0E5lDy-eE7yiU
+
+{
+    "name": "Dodon Ray",
+    "category": "abilities",
+    "price": 20,
+    "quantity": 5
+}

@@ -1,10 +1,21 @@
+const User = require('../models/user')
 const productsRouter = require('express').Router()
 const Product = require('../models/product')
+const jwt = require('jsonwebtoken')
 
-productsRouter.get('/', (request, response) => {  // retrieve
-    Product.find({}).then(products => {
-      response.json(products)
-    })
+const getTokenFrom = request => {
+    const authorization = request.get('authorization')
+    if (authorization && authorization.startsWith('Bearer ')) {
+      return authorization.replace('Bearer ', '')
+    }
+    return null
+}
+
+productsRouter.get('/', async (request, response) => {  // retrieve
+    const products = await Product
+        .find({}).populate('user', { username: 1 })
+
+  response.json(products)
 })
   
   
@@ -19,42 +30,58 @@ productsRouter.get('/:id', (request, response) => {   // retrieve
     })
 })
   
-productsRouter.post('/', (request, response) => {   // create
+productsRouter.post('/', async (request, response) => {   // create
     const body = request.body
-  
-    if (!body.content) {
+
+    const decodedToken = jwt.verify(getTokenFrom(request), process.env.SECRET)
+    if (!decodedToken.id) {
+        return response.status(401).json({ error: 'token invalid' })
+    }
+    const user = await User.findById(decodedToken.id)
+    //const user = await User.findById("66b515ec1f0d53f44ad4def9")
+   /* if (!body.content) {
         return response.status(400).json({
             error: 'missing fields'
         })
-    }
+    }*/
   
     const product = new Product({
         name: body.name,
+        category: body.category,
         price: body.price,
-        quantity: body.quantity
+        quantity: body.quantity,
+        user: user.id
     })
           
-    product.save().then(savedProduct => {
-        response.json(savedProduct)
-    })
+    const savedProduct = await product.save()
+
+    user.products = user.products.concat(savedProduct._id)
+    await user.save()
+
+    response.json(savedProduct)
 })
   
-productsRouter.delete('/:id', (request, response) => {  // delete
+productsRouter.delete('/:id', async (request, response) => {  // delete
+    const user = await User.findById(request.body.userId)
+    user.products = user.products.filter(product => product.id != request.params.id)
+    await user.save()
+
     Product.findByIdAndDelete(request.params.id)
         .then(result => {
             response.status(204).end()
         })
 })
   
-productsRouter.put('/:id', (request, response) => {  // update
+productsRouter.put('/:id', async (request, response) => {  // update
     const body = request.body
   
     const product = {
         name: body.name,
+        category: body.category,
         price: body.price,
         quantity: body.quantity
     }
-  
+
     Product.findByIdAndUpdate(request.params.id, product, {new: true})
         .then(updatedProduct => {
             response.json(updatedProduct)

@@ -3,7 +3,7 @@ const usersRouter = require('express').Router()
 const bcrypt = require('bcrypt')
 
 usersRouter.post('/', async (request, response) => {
-    const { username, password } = request.body
+    const {username, password} = request.body
 
     const saltRounds = 10
     const passwordHash = await bcrypt.hash(password, saltRounds)
@@ -20,10 +20,17 @@ usersRouter.post('/', async (request, response) => {
 })
   
 usersRouter.get('/', async (request, response) => {
-    User.find({}).then(users => {
-        response.json(users)
-    })
+    const users = await User
+        .find({}).populate('products', { name: 1, category: 1, price: 1, quantity: 1 })
 
+  response.json(users)
+})
+
+usersRouter.delete('/:id', (request, response) => {
+    User.findByIdAndDelete(request.params.id)
+        .then(result => {
+            response.status(204).end()
+        })
 })
 
 module.exports = usersRouter
