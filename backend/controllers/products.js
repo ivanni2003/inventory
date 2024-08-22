@@ -62,10 +62,6 @@ productsRouter.post('/', async (request, response) => {   // create
 })
   
 productsRouter.delete('/:id', async (request, response) => {  // delete
-    const user = await User.findById(request.body.userId)
-    user.products = user.products.filter(product => product.id != request.params.id)
-    await user.save()
-
     Product.findByIdAndDelete(request.params.id)
         .then(result => {
             response.status(204).end()

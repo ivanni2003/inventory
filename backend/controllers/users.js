@@ -23,7 +23,7 @@ usersRouter.get('/', async (request, response) => {
     const users = await User
         .find({}).populate('products', { name: 1, category: 1, price: 1, quantity: 1 })
 
-  response.json(users)
+    response.json(users)
 })
 
 usersRouter.delete('/:id', (request, response) => {

@@ -5,22 +5,58 @@ import userService from './services/user'
 import productService from './services/product'
 
 import Product from './components/Product'
-import product from './services/product'
 
 const App = () => {
-  const [products, setProducts] = useState([])
+  const [allProducts, setAllProducts] = useState([])
+  const [userProducts, setUserProducts] = useState([])
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [user, setUser] = useState(null)
 
+  const [createPage, setCreatePage] = useState(false)
+  const [updatePage, setUpdatePage] = useState(false)
+
+  const [newProductName, setNewProductName] = useState('')
+  const [newProductCategory, setNewProductCategory] = useState('')
+  const [newProductPrice, setNewProductPrice] = useState('')
+  const [newProductQuantity, setNewProductQuantity] = useState('');
+
+  const [updateProductId, setUpdateProductId] = useState('')
+  const [updateProductName, setUpdateProductName] = useState('')
+  const [updateProductCategory, setUpdateProductCategory] = useState('')
+  const [updateProductPrice, setUpdateProductPrice] = useState('')
+  const [updateProductQuantity, setUpdateProductQuantity] = useState('')
+
+  const [filter, setFilter] = useState('')
+  const [filteredProducts, setFilteredProducts] = useState([])
+
   useEffect(() => {
+    const loggedUserJSON = window.localStorage.getItem('loggedUser')
+    if (loggedUserJSON) {
+      const user = JSON.parse(loggedUserJSON)
+      setUser(user)
+      productService.setToken(user.token)
+      
+    }
+  }, [])
+
+  useEffect(() => {  
     productService
       .getAll()
       .then(initialProducts => {
-        setProducts(initialProducts)
-        console.log(products)
+        setAllProducts(initialProducts)
       })
   }, [])
+
+  useEffect(() => {
+    if (allProducts.length > 0 && user) {
+      console.log(allProducts)
+      setUserProducts(allProducts.filter(product => product.user.id === user.id))
+    }
+  }, [allProducts, user])
+
+  
+
   
   const loginPage = () => (
     <div> 
@@ -54,27 +90,205 @@ const App = () => {
 
   const productPage = () => (  
     <div>
-      <h1>Welcome user</h1>
-      {products.map(product =>
-        <Product key={product.id} name={product.name} category={product.category} price={product.price} quantity={product.quantity}/>
-      )}
+      <h1>Welcome {user.username}</h1>
+      <div>Filter by Category:
+        <input value={filter} onChange={handleFilterChange}/>
+      </div>
+      {filter === '' ? (
+  userProducts.map(product => (
+    <Product
+      key={product.id}
+      name={product.name}
+      category={product.category}
+      price={product.price}
+      quantity={product.quantity}
+      deleteProduct={() => handleDeleteProduct(product.id)}
+      updateProductPage={() => handleSwitchToUpdatePage(product.name, product.id)}
+    />
+  ))
+) : (
+  filteredProducts.map(product => (
+    <Product
+      key={product.id}
+      name={product.name}
+      category={product.category}
+      price={product.price}
+      quantity={product.quantity}
+      deleteProduct={() => handleDeleteProduct(product.id)}
+      updateProductPage={() => handleSwitchToUpdatePage(product.name, product.id)}
+    />
+  ))
+)}
+
+      
+
+      <button type="button" onClick={handleSwitchToCreatePage}>Create Product</button>
       <button type="button" onClick={handleLogout}>Log Out</button>
       <button type="button" onClick={handleDeleteAccount}>Delete Account</button>
     </div>
   )
 
-  const handleLogin = async (event) => {
+  const createProductPage = () => (
+    <div>
+      <h1>Create Product</h1>
+      <form>
+        <div>
+          name:
+          <input type="text" 
+                  value={newProductName} 
+                  name="newProductName" 
+                  onChange={({target}) => setNewProductName(target.value)} 
+                  />
+        </div>
+        <div>
+          category:
+          <input type="text" 
+                  value={newProductCategory} 
+                  name="newProductCategory" 
+                  onChange={({target}) => setNewProductCategory(target.value)} 
+                  />
+        </div>
+        <div>
+          price:
+          <input type="text" 
+                  value={newProductPrice} 
+                  name="newProductPrice" 
+                  onChange={({target}) => setNewProductPrice(target.value)} 
+                  />
+        </div>
+        <div>
+          quantity:
+          <input type="text" 
+                  value={newProductQuantity} 
+                  name="newProductQuantity" 
+                  onChange={({target}) => setNewProductQuantity(target.value)} 
+                  />
+        </div>
+        <button type="button" onClick={handleCreateProduct}>Create Product</button>
+        <button type="button" onClick={handleExitCreate}>Exit</button>
+      </form>
+    </div>
+  )
+
+  const updateProductPage = (name, id) => (
+    <div>
+      <h1>Update {name}</h1>
+      <form>
+        <div>
+          category:
+          <input type="text" 
+                  value={updateProductCategory} 
+                  name="updateProductCategory" 
+                  onChange={({target}) => setUpdateProductCategory(target.value)} 
+                  />
+        </div>
+        <div>
+          price:
+          <input type="text" 
+                  value={updateProductPrice} 
+                  name="updateProductPrice" 
+                  onChange={({target}) => setUpdateProductPrice(target.value)} 
+                  />
+        </div>
+        <div>
+          quantity:
+          <input type="text" 
+                  value={updateProductQuantity} 
+                  name="updateProductQuantity" 
+                  onChange={({target}) => setUpdateProductQuantity(target.value)} 
+                  />
+        </div>
+        <button type="button" onClick={handleUpdateProduct}>Update Product</button>
+        <button type="button" onClick={handleExitUpdate}>Exit</button>
+      </form>
+    </div>
+  )
+
+  const handleFilterChange = (event) => {
+    setFilter(event.target.value)
+    setFilteredProducts(allProducts.filter(product => product.category.toLowerCase().includes(filter.toLowerCase())))
+    
+  }
+  const handleSwitchToUpdatePage = (name, id) => {
+    setUpdatePage(true)
+    setUpdateProductName(name)
+    setUpdateProductId(id)
+
+  }
+
+  const handleSwitchToCreatePage = (event) => {
     event.preventDefault()
-    //console.log("logging in with", username, password)
+    setCreatePage(true)
+  }
+
+  const handleCreateProduct = async (event) => {
+    event.preventDefault()
+
+    try {
+      const product = await productService.createProduct(newProductName, newProductCategory, Number(newProductPrice), Number(newProductQuantity), user.id)
+      setNewProductName('')
+      setNewProductCategory('')
+      setNewProductPrice('')
+      setNewProductQuantity('')
+
+      setAllProducts(allProducts.concat(product))
+      setUserProducts(userProducts.concat(product))
+
+      alert("Product Created")
+    }
+    catch (exception) {
+      alert("create error")
+    }
+  }
+
+  const handleUpdateProduct = async (event) => {
+    event.preventDefault()
+
+    try {
+      const updatedProduct = await productService.updateProduct(updateProductName, updateProductCategory, Number(updateProductPrice), Number(updateProductQuantity), updateProductId)
+      setUpdateProductName('')
+      setUpdateProductId('')
+      setUpdateProductCategory('')
+      setUpdateProductPrice('')
+      setUpdateProductQuantity('')
+
+      setAllProducts(allProducts.map(product => product.id === updatedProduct.id ? updatedProduct : product))
+      setUserProducts(allProducts.filter(product => product.user.id === user.id))
+      alert("Product Updated")
+    }
+    catch (exception) {
+      alert("Update Product Error")
+    }
+  }
+
+  const handleExitCreate = (event) => {
+    event.preventDefault()
+    setCreatePage(false)
+  }
+
+  const handleExitUpdate = (event) => {
+    event.preventDefault()
+    setUpdatePage(false)
+  }
+
+  const handleLogin = async (event, register) => {
+    if (!register) {
+      event.preventDefault()
+    }
 
     try {
       const user = await loginService.login({username, password})
-      console.log(user)
+
+      window.localStorage.setItem(
+        "loggedUser", JSON.stringify(user)
+      )
+
+      productService.setToken(user.token)
       setUser(user)
       setUsername('')
       setPassword('')
 
-      setProducts(products.filter(product => product.user.id === user.id))
+      setUserProducts(allProducts.filter(product => product.user.id === user.id))
     }
     catch (exception) {
       alert("Invalid credentials")
@@ -83,7 +297,6 @@ const App = () => {
 
   const handleRegister = async (event) => {
     event.preventDefault()
-    //console.log("registering with", username, password)
 
     if (username == '' || password == '') {
       alert("Please Provide Username and Password")
@@ -92,13 +305,8 @@ const App = () => {
 
     try {
       const user = await userService.createUser({username, password})
-      console.log(user)
 
-      setUser(user)
-      setUsername('')
-      setPassword('')
-
-      setProducts(products.filter(product => product.user.id === user.id))
+      handleLogin(event, true)
     }
     catch (exception) {
       alert("Registration Error")
@@ -109,28 +317,26 @@ const App = () => {
   const handleLogout = (event) => {
     event.preventDefault()
     setUser(null)
+    window.localStorage.clear()
 
     productService
       .getAll()
       .then(initialProducts => {
-        setProducts(initialProducts)
-        console.log(products)
+        setAllProducts(initialProducts)
       })
   }
 
   const handleDeleteAccount = async (event) => {
     event.preventDefault()
-    console.log("deleting", user._id)
 
     try {
-      const response = await userService.deleteUser(user.id, {username, password})
+      await userService.deleteUser(user.id, {username, password})
       setUser(null)
 
       productService
       .getAll()
       .then(initialProducts => {
-        setProducts(initialProducts)
-        console.log(products)
+        setAllProducts(initialProducts)
       })
       alert("Account Deleted")
     }
@@ -138,12 +344,25 @@ const App = () => {
       alert("Accound Deletion Error")
     }
   }
+
+  
+  const handleDeleteProduct = async (id) => {
+    try {
+      await productService.deleteProduct(id, {username, password})
+      setAllProducts(allProducts.filter(product => product.id != id))
+      setUserProducts(userProducts.filter(product => product.id != id))
+      alert("Product Deleted")
+    }
+    catch (exception) {
+      alert("Delete Product Error")
+    }
+  }
   return (
     <div>
-      {user === null ?
+      {updatePage === true ? updateProductPage(updateProductName, updateProductId) : createPage === true ? createProductPage() : user === null ?
       loginPage() :
-      productPage()
-      }
+      productPage()}
+      
 
     </div>
   )

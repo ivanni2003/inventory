@@ -1,10 +1,12 @@
-const Product = ({name, category, price, quantity}) => {
+const Product = ({name, category, price, quantity, deleteProduct, updateProductPage}) => {
     return (
         <div>
-            <div>{name}</div>
-            <div>{category}</div>
-            <div>{price}</div>
-            <div>{quantity}</div>
+            <div>Name: {name}</div>
+            <div>Category: {category}</div>
+            <div>Price: {price}</div>
+            <div>Quantity: {quantity}</div>
+            <button onClick={deleteProduct}>Delete</button>
+            <button onClick={updateProductPage}>Update</button>
         </div>
     )
 }
