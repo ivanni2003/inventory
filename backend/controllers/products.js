@@ -38,13 +38,7 @@ productsRouter.post('/', async (request, response) => {   // create
         return response.status(401).json({ error: 'token invalid' })
     }
     const user = await User.findById(decodedToken.id)
-    //const user = await User.findById("66b515ec1f0d53f44ad4def9")
-   /* if (!body.content) {
-        return response.status(400).json({
-            error: 'missing fields'
-        })
-    }*/
-  
+
     const product = new Product({
         name: body.name,
         category: body.category,
